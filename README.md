@@ -38,6 +38,19 @@ dotnet test
 
 בדיקות ה-DB וה-worker מרימות SQL Server אמיתי בקונטיינר (Testcontainers), ולכן נדרש Docker פעיל. ההרצה הראשונה איטית יותר בגלל משיכת ה-image.
 
+**הרצה אחרונה:** 08.11.2026, `dotnet test` עם .NET SDK 10.0.403 ו-Docker 29.9.2. **74 מתוך 74 בדיקות עברו**, 0 נכשלו, 0 דולגו, בזמן של כ-2 דקות.
+
+| קבוצת בדיקות | מה נבדק | בדיקות | עברו |
+|---|---|---|---|
+| `MessageStatusTests` | מעברי סטטוס, retry ו-backoff, שחזור `Sending` תקוע | 9 | 9 |
+| `SendWorkerTests` | שליחה, retry עד `Failed`, שחזור בעלייה, בידוד כישלונות, עדכון במקביל (SQL Server אמיתי) | 6 | 6 |
+| `SmsProviderClientTests` | סיווג שגיאות זמניות וקבועות, הצלחה בלי `id` או עם גוף לא תקין, חוזה הבקשה, נתיבים מקונפיגורציה | 12 | 12 |
+| `MessagesApiTests` | Idempotency, ולידציה, מספר שאינו של עובד, `GET` לפי id, רשימה וסינון | 14 | 14 |
+| `PhoneNumberNormalizerTests` | נרמול פורמטים, דחיית נייח, מספר זר, אותיות, מספר קצר ובלוק לא מוקצה | 15 | 15 |
+| `MessageBodyRulesTests` | אורך ההודעה ומספר המקטעים ב-GSM-7 וב-Unicode | 12 | 12 |
+| `EmployeeSeederTests` | איחוד מופעים, טלפון משותף לשני עובדים, הרצה חוזרת | 3 | 3 |
+| `PhoneMaskTests` | הסתרה חלקית של המספר | 3 | 3 |
+
 ### פיתוח בלי Docker ל-API ול-Web
 
 צריך SQL Server זמין (אפשר `docker compose up db`). ה-connection string נמצא ב-`appsettings.Development.json` **בלי סיסמה**; הסיסמה נשמרת ב-user-secrets:
