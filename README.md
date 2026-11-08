@@ -73,16 +73,24 @@ cd src/sms-web && npm install && npm start
 
 ```
 src/SmsService.Api/
-  Program.cs                    DI, endpoints, migrations ו-seed בעלייה
-  Endpoints/MessagesEndpoints.cs  שלושת ה-endpoints, ולידציה, Idempotency
-  Domain/Message.cs             הישות ומעברי הסטטוס (המקום היחיד שבו סטטוס משתנה)
-  Domain/Employee*.cs           עובד + טלפונים
-  Validation/                   נרמול טלפון, אורך הודעה וחישוב מקטעים
-  Data/                         DbContext, migrations, seeder, employees.seed.json
-  Sending/SendWorker.cs         BackgroundService ששולח, עם retry ו-backoff
-  Sending/SmsProviderClient.cs  הקוד היחיד שמכיר את ה-API של הספק
-src/sms-web/                    Angular
-tests/SmsService.Tests/         xUnit
+  Program.cs                      DI, endpoints, /health, migrations ו-seed בעלייה
+  Endpoints/MessagesEndpoints.cs  שכבת HTTP בלבד: קורא את הבקשה, קורא ל-service וממפה לתשובה
+  Contracts/MessageContracts.cs   DTOs של הבקשות והתשובות, כולל attributes של ולידציה
+  Services/MessageService.cs      כללים עסקיים: המספר שייך לעובד, Idempotency, שמירה, רשימה
+  Domain/Message.cs               הישות ומעברי הסטטוס (המקום היחיד שבו סטטוס משתנה)
+  Domain/MessageStatus.cs         ערכי הסטטוס
+  Domain/Employee*.cs             עובד + טלפונים
+  Validation/                     נרמול טלפון, כללי תוכן ומקטעים, attributes, ValidationFilter,
+                                  InvalidInput (שגיאה מפורטת מול שגיאה כללית)
+  Data/                           DbContext, migrations, seeder, employees.seed.json
+  Sending/SendWorker.cs           BackgroundService ששולח, עם retry ו-backoff
+  Sending/SendWorkerSignal.cs     Channel שמעיר את ה-worker מיד כשנוצרת הודעה
+  Sending/SmsProviderClient.cs    הקוד היחיד שמכיר את ה-API של הספק (ISmsProviderClient)
+  Sending/SmsProviderOptions.cs   כתובת ונתיבי הספק, עם ValidateOnStart
+  PhoneMask.cs                    הסתרה חלקית של המספר ב-GET /messages
+  LogHelpers.cs                   3 ספרות אחרונות של המספר בלוגים
+src/sms-web/src/app/              Angular: טופס שליחה, טבלת הודעות, service ומודלים
+tests/SmsService.Tests/           xUnit; Infrastructure/ עם ApiFactory, SQL Server ב-Testcontainers ושעון לבדיקות
 ```
 
 ---
@@ -141,7 +149,7 @@ tests/SmsService.Tests/         xUnit
 ## מה לא נעשה ולמה
 
 - **סטטוס מסירה (`Delivered` / `Undelivered`):** החוזה של ה-GET של הספק לא ידוע. `GetStatusAsync` קיים ב-`ISmsProviderClient` וממומש לפי החוזה המשוער, אבל ה-worker לא קורא לו. כדי לא להמציא ערכי סטטוס של ספק שלא ראיתי, החלטתי לא לממש את השלב הזה.
-- **שרת ספק מדומה משלנו:** לא נבנה, בהתאם לאפיון. הבדיקות משתמשות ב-fake של `ISmsProviderClient`. לבדיקה מקצה לקצה בזמן הפיתוח השתמשתי בסקריפט זמני מחוץ ל-repo.
+- **שרת ספק מדומה משלנו:** לא נבנה, בהתאם לאפיון. הבדיקות משתמשות ב-fake של `ISmsProviderClient`. בדיקה מקצה לקצה מול ספק שעונה בפועל לא נעשתה. אם היה לי עוד זמן, הייתי מרימה ספק מדומה או מוצאת ספק מדומה קיים, ובודקת מולו גם שליחה מוצלחת.
 - **אימות, Deploy, CI/CD, Message Broker, Redis:** מחוץ להיקף במכוון.
 - **API לניהול עובדים:** לא נדרש. העובדים נטענים מ-seed.
 - **Pagination מלא:** יש רק הגבלה של 100 תוצאות. התשובה עטופה ב-`items` כדי שאפשר יהיה להוסיף pagination בלי לשבור את החוזה.
@@ -187,8 +195,9 @@ tests/SmsService.Tests/         xUnit
 
 - **האפיון (`SPEC.md`)** נכתב לפני הפיתוח, והוא מגדיר מה בונים, הנחות היסוד, ההחלטות ומה במפורש לא בונים.
 - **הקוד, הבדיקות וה-README** נכתבו בעזרת Claude Code לפי האפיון, שלב אחרי שלב (סעיף 16 באפיון).
-- **למה:** כדי להשקיע את הזמן בהחלטות (מודל נתונים, מחזור חיים, טיפול בתקלות) ובבדיקה שלהן, ולא בכתיבת boilerplate.
-- **מה נבדק ידנית:** כל ההחלטות שב-README; הרצת כל הבדיקות; הרצה מלאה ב-`docker compose` מול ספק מדומה זמני (שליחה מוצלחת, שגיאת 500 עם retry ו-backoff עד `Failed`, ולידציה, Idempotency בלחיצה כפולה בממשק, ושרידות של הנתונים אחרי restart).
+- **למה:** כדי להשקיע את הזמן בהחלטות (מודל נתונים, מחזור חיים, טיפול בתקלות) ובבדיקה שלהן, ולא בכתיבת קוד פשוט.
+- **מה נבדק ידנית:** כל ההחלטות שב-README; הרצת כל הבדיקות; הרצה מלאה ב-`docker compose` מול כתובת ספק מדומה (ספק לא זמין עם retry ו-backoff עד `Failed`, ולידציה, Idempotency בלחיצה כפולה בממשק, ושרידות של הנתונים אחרי restart). בכתובת הזו לא רץ ספק בפועל, ולכן **שליחה מוצלחת לא נבדקה**.
+- **מבנה הקוד** שונה על ידי, ולא נוצר על ידי Claude Code.
 - **מה לא נבדק לעומק:** קוד הבדיקות עצמו. וידאתי שכל הבדיקות עוברות, אבל בגלל מגבלת הזמן לא עברתי על כל בדיקה כדי לוודא שהיא בודקת את מה שהיא אמורה לבדוק, והסתמכתי על Claude Code. אם היה לי עוד זמן, הייתי עוברת על הבדיקות אחת-אחת, ובודקת שבדיקה נכשלת כשמכניסים באג מכוון בקוד.
 - **מבנה מסד הנתונים** לא נבדק לעומק, גם הוא בגלל מגבלת הזמן. לא עברתי על ה-migrations והסכמה שנוצרה בפועל (טבלאות, סוגי עמודות, אינדקסים ומפתחות זרים) כדי לוודא שהם תואמים להחלטות שבטבלה למעלה. אם היה לי עוד זמן, הייתי עוברת על הסכמה ב-SQL Server מול האפיון.
 - **סטיות מהאפיון שהתגלו בזמן הפיתוח** ותועדו בטבלת ההחלטות: `Content-Length` בבקשה לספק, ו-`Attempts` שנספר בתחילת הניסיון.
