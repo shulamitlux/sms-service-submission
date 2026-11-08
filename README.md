@@ -167,7 +167,7 @@ tests/SmsService.Tests/           xUnit; Infrastructure/ עם ApiFactory, SQL Se
 - **בדיקות Frontend ו-E2E אוטומטיות:** הממשק אופציונלי. בדקתי אותו ידנית ובסקריפט Playwright חד-פעמי.
 - **ניטור ומטריקות:** יש רק לוגים מובנים. מה הייתי מוסיף מתואר בחלק ב'.
 
-## מה הייתי מוסיף עם עוד זמן
+## מה הייתי מוסיפה עם עוד זמן
 
 1. התאמה לחוזה האמיתי של הספק, ו-polling של סטטוס מסירה (`Delivered` / `Undelivered`).
 2. נעילת שורות ב-SQL (`UPDATE TOP(n) ... WITH (UPDLOCK, READPAST) OUTPUT`) במקום optimistic concurrency, כדי לאפשר כמה workers וכמה מופעים של ה-API.
@@ -216,4 +216,4 @@ tests/SmsService.Tests/           xUnit; Infrastructure/ עם ApiFactory, SQL Se
 ## זמן שהושקע בפועל
 
 
-**4 שעות** (אפיון: 2, פיתוח ובדיקות: 1, README ומסמך חלק ב': 1).
+**4 שעות** (אפיון: 1, פיתוח ובדיקות: 2, README ומסמך חלק ב': 1).
