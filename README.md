@@ -140,8 +140,6 @@ tests/SmsService.Tests/           xUnit; Infrastructure/ עם ApiFactory, SQL Se
 | **הבקשה לספק נשלחת עם `Content-Length`** (`StringContent`) ולא chunked | בבדיקה מקצה לקצה התברר ש-`PostAsJsonAsync` שולח chunked, ששרתים מדומים פשוטים לא תמיד תומכים בו. |
 | **נתיבי הספק בקונפיגורציה** (`SmsProviderOptions`), עם בדיקת תקינות בעליית השירות (`ValidateOnStart`) | החוזה של הספק לא נמסר. כך התאמה לנתיבים אחרים לא דורשת שינוי קוד, וקונפיגורציה שגויה (כתובת חסרה, `StatusPath` בלי `{id}`) מפילה את השירות מיד בעלייה עם הודעה ברורה, ולא בשליחה הראשונה. את מבנה ה-JSON לא הפכתי לקונפיגורבילי: זה כבר מיפוי בקוד, ומקומו ב-`SmsProviderClient`. |
 | **Swagger זמין בכל הסביבות** | השירות רץ רק מקומית (אין Deploy), ונוח לבודק. |
-| **FluentAssertions בגרסה 7.x** | מגרסה 8 הרישיון מסחרי. |
-| **`System.Security.Cryptography.Pkcs` מוצמד לגרסה עדכנית** | התלות הטרנזיטיבית הישנה מסומנת עם פגיעות ידועה. |
 | **Node 24 LTS ו-Angular 22** (הגרסה היציבה העדכנית). הגרסאות מתועדות ב-`global.json`, `.nvmrc` ו-`package.json` | בהתאם לאפיון. |
 
 ---
