@@ -39,7 +39,17 @@ public class SmsProviderClient(HttpClient http, IOptions<SmsProviderOptions> opt
         using var response = await CallAsync(
             () => http.PostAsync(sendPath, new StringContent(json, Encoding.UTF8, "application/json"), ct), ct);
 
-        var content = await response.Content.ReadFromJsonAsync<SendResponse>(ct);
+        SendResponse? content;
+        try
+        {
+            content = await response.Content.ReadFromJsonAsync<SendResponse>(ct);
+        }
+        catch (JsonException ex)
+        {
+            // Same reason as below: the provider said OK, so it may have sent it already. Not retried.
+            throw new SmsProviderException("Provider returned success with an invalid body", isTransient: false, ex);
+        }
+
         if (string.IsNullOrWhiteSpace(content?.Id))
             // Not retried: the provider said OK, so it may have sent it already. Retrying risks a duplicate SMS.
             throw new SmsProviderException("Provider returned success without a message id", isTransient: false);

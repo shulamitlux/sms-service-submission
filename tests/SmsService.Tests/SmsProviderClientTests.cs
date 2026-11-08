@@ -38,7 +38,7 @@ public class SmsProviderClientTests
         var result = await CreateClient(handler).SendAsync("+972507654321", "hi", messageId, CancellationToken.None);
 
         result.ProviderMessageId.Should().Be("abc");
-        handler.LastRequest!.RequestUri!.ToString().Should().Be("http://provider.test/send");
+        handler.LastRequest!.RequestUri!.AbsoluteUri.Should().Be("http://provider.test/send");
         handler.LastRequest.Content!.Headers.ContentLength.Should().NotBeNull(); // no chunked encoding
         handler.LastBody.Should().Be($$"""{"to":"+972507654321","message":"hi","reference":"{{messageId}}"}""");
     }
@@ -78,6 +78,20 @@ public class SmsProviderClientTests
         (await act.Should().ThrowAsync<SmsProviderException>()).Which.IsTransient.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("OK", "application/json")]
+    [InlineData("OK", "text/plain")]
+    [InlineData("<html><body>OK</body></html>", "text/html")]
+    public async Task Success_with_invalid_body_is_permanent_to_avoid_duplicates(string body, string mediaType)
+    {
+        var handler = new StubHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) });
+
+        var act = () => CreateClient(handler).SendAsync("+972507654321", "hi", Guid.NewGuid(), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<SmsProviderException>()).Which.IsTransient.Should().BeFalse();
+    }
+
     [Fact]
     public async Task Paths_come_from_configuration()
     {
@@ -87,10 +101,10 @@ public class SmsProviderClientTests
         var client = CreateClient(handler, new SmsProviderOptions { SendPath = "/api/sms", StatusPath = "api/sms/{id}/status" });
 
         await client.SendAsync("+972507654321", "hi", Guid.NewGuid(), CancellationToken.None);
-        handler.LastRequest!.RequestUri!.ToString().Should().Be("http://provider.test/api/sms");
+        handler.LastRequest!.RequestUri!.AbsoluteUri.Should().Be("http://provider.test/api/sms");
 
         var status = await client.GetStatusAsync("a b", CancellationToken.None);
-        handler.LastRequest!.RequestUri!.ToString().Should().Be("http://provider.test/api/sms/a%20b/status");
+        handler.LastRequest!.RequestUri!.AbsoluteUri.Should().Be("http://provider.test/api/sms/a%20b/status");
         status!.Status.Should().Be("delivered");
     }
 }
