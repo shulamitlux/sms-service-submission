@@ -89,6 +89,7 @@ src/SmsService.Api/
   Program.cs                      DI, endpoints, /health, migrations ו-seed בעלייה
   Endpoints/MessagesEndpoints.cs  שכבת HTTP בלבד: קורא את הבקשה, קורא ל-service וממפה לתשובה
   Contracts/MessageContracts.cs   DTOs של הבקשות והתשובות, כולל attributes של ולידציה
+  Services/IMessageService.cs     החוזה של שכבת ה-service (שליחה, סטטוס, רשימה), בלי תלות ב-HTTP
   Services/MessageService.cs      כללים עסקיים: המספר שייך לעובד, Idempotency, שמירה, רשימה
   Domain/Message.cs               הישות ומעברי הסטטוס (המקום היחיד שבו סטטוס משתנה)
   Domain/MessageStatus.cs         ערכי הסטטוס
@@ -98,7 +99,8 @@ src/SmsService.Api/
   Data/                           DbContext, migrations, seeder, employees.seed.json
   Sending/SendWorker.cs           BackgroundService ששולח, עם retry ו-backoff
   Sending/SendWorkerSignal.cs     Channel שמעיר את ה-worker מיד כשנוצרת הודעה
-  Sending/SmsProviderClient.cs    הקוד היחיד שמכיר את ה-API של הספק (ISmsProviderClient)
+  Sending/ISmsProviderClient.cs   החוזה מול הספק (שליחה וסטטוס), כדי שאפשר יהיה להחליף ספק ולהשתמש ב-fake בבדיקות
+  Sending/SmsProviderClient.cs    הקוד היחיד שמכיר את ה-API של הספק
   Sending/SmsProviderOptions.cs   כתובת ונתיבי הספק, עם ValidateOnStart
   PhoneMask.cs                    הסתרה חלקית של המספר ב-GET /messages
   LogHelpers.cs                   3 ספרות אחרונות של המספר בלוגים
@@ -209,9 +211,13 @@ tests/SmsService.Tests/           xUnit; Infrastructure/ עם ApiFactory, SQL Se
 - **למה:** כדי להשקיע את הזמן בהחלטות (מודל נתונים, מחזור חיים, טיפול בתקלות) ובבדיקה שלהן, ולא בכתיבת קוד פשוט.
 - **מה נבדק ידנית:** כל ההחלטות שב-README; הרצת כל הבדיקות; הרצה מלאה ב-`docker compose` מול כתובת ספק מדומה (ספק לא זמין עם retry ו-backoff עד `Failed`, ולידציה, Idempotency בלחיצה כפולה בממשק, ושרידות של הנתונים אחרי restart). בכתובת הזו לא רץ ספק בפועל, ולכן **שליחה מוצלחת לא נבדקה**.
 - **מבנה הקוד** שונה על ידי, ולא נוצר על ידי Claude Code.
-- **מה לא נבדק לעומק:** קוד הבדיקות עצמו. וידאתי שכל הבדיקות עוברות, אבל בגלל מגבלת הזמן לא עברתי על כל בדיקה כדי לוודא שהיא בודקת את מה שהיא אמורה לבדוק, והסתמכתי על Claude Code. אם היה לי עוד זמן, הייתי עוברת על הבדיקות אחת-אחת, ובודקת שבדיקה נכשלת כשמכניסים באג מכוון בקוד.
+- **קוד הבדיקות:** עברתי על הבדיקות כדי לוודא שכל אחת בודקת את מה שהיא אמורה לבדוק. אלה הפערים שמצאתי, ובגלל מגבלת הזמן לא תיקנתי אותם:
+  - אין בדיקה של שתי בקשות **במקביל** עם אותו `Idempotency-Key`. הבדיקה הקיימת שולחת אותן אחת אחרי השנייה, ולכן הטיפול בהפרת הייחודיות ב-`MessageService` לא נבדק.
+  - אין בדיקה ש-`MarkFailedAttempt` על הודעה שאינה ב-`Sending` זורק חריגה.
+  - אם החיבור נקטע באמצע קריאת הגוף של תשובת 200 מהספק, ההודעה נשלחת שוב, למרות שייתכן שהספק כבר שלח אותה. זה עלול לגרום ל-SMS כפול.
 - **מבנה מסד הנתונים** לא נבדק לעומק, גם הוא בגלל מגבלת הזמן. לא עברתי על ה-migrations והסכמה שנוצרה בפועל (טבלאות, סוגי עמודות, אינדקסים ומפתחות זרים) כדי לוודא שהם תואמים להחלטות שבטבלה למעלה. אם היה לי עוד זמן, הייתי עוברת על הסכמה ב-SQL Server מול האפיון.
 - **סטיות מהאפיון שהתגלו בזמן הפיתוח** ותועדו בטבלת ההחלטות: `Content-Length` בבקשה לספק, ו-`Attempts` שנספר בתחילת הניסיון.
+- **ניהול גרסאות:** האפיון מגדיר commit בסוף כל שלב (סעיף 19), אבל בפועל לא עשיתי commit בסוף כל שלב, אלא commit אחד בסיום הפיתוח.
 
 ## זמן שהושקע בפועל
 
